@@ -9,4 +9,4 @@ Data files (.pkl) are stored locally in:
 * `data/With EDM/`
 * `data/Without EDM/`
 
-These files are not included in the repository due to size, but can be found [here](https://hep.ph.liv.ac.uk/~jprice/Project2025-26/InputFiles/).
+These files are not included in the repository due to size, but can be found [here](https://hep.ph.liv.ac.uk/~jprice/Project2025-26/).
