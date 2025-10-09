@@ -25,13 +25,13 @@ env/
 # ----------------------------
 # Data files
 # ----------------------------
-# Ignore all raw data files in both folders
-data/With EDM/*.pkl
-data/Without EDM/*.pkl
+# Ignore everything inside the data folders
+data/With EDM/*
+data/Without EDM/*
 
-# Optional: allow small sample files for testing
-!data/With EDM/sample_*.pkl
-!data/Without EDM/sample_*.pkl
+# But keep the folder structure itself
+!data/With EDM/.gitkeep
+!data/Without EDM/.gitkeep
 
 # ----------------------------
 # IDE / OS specific files
