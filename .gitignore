@@ -1,0 +1,50 @@
+# ----------------------------
+# Python
+# ----------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Virtual environments
+venv/
+.env/
+ENV/
+.venv/
+env/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Compiled / temporary files
+*.log
+*.tmp
+*.bak
+
+# ----------------------------
+# Data files
+# ----------------------------
+# Ignore all raw data files in both folders
+data/With EDM/*.pkl
+data/Without EDM/*.pkl
+
+# Optional: allow small sample files for testing
+!data/With EDM/sample_*.pkl
+!data/Without EDM/sample_*.pkl
+
+# ----------------------------
+# IDE / OS specific files
+# ----------------------------
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ----------------------------
+# Misc
+# ----------------------------
+*.sqlite3
+*.db
+*.lock
+*.swp
