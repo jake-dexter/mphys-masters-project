@@ -28,10 +28,8 @@ env/
 # Ignore everything inside the data folders
 data/With EDM/*
 data/Without EDM/*
-
-# But keep the folder structure itself
-!data/With EDM/.gitkeep
-!data/Without EDM/.gitkeep
+outputs/Without EDM/*.png
+outputs/With EDM/*.png
 
 # ----------------------------
 # IDE / OS specific files
@@ -48,3 +46,8 @@ Thumbs.db
 *.db
 *.lock
 *.swp
+
+# ----------------------------
+# Always keep .gitkeep files
+# ----------------------------
+!.gitkeep
