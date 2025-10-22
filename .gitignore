@@ -30,6 +30,8 @@ data/With EDM/*
 data/Without EDM/*
 outputs/Without EDM/*.png
 outputs/With EDM/*.png
+outputs/Difference/*.png
+outputs/Weighting/*.png
 
 # ----------------------------
 # IDE / OS specific files
