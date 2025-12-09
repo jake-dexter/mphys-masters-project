@@ -202,7 +202,7 @@ def generate_mask(data_all,gamma=29.30343,lam_curr = 0.6):
     physical_mask = np.where(lambda_mask, physical_mask, 0.0)
     return physical_mask
 
-def plot_weight(Y, X, W, name="Weight", save_path=None, lam_plot=-1):
+def plot_weight(Y, X, W, name="Weight", save_path=None, lam_plot = -1):
     """
     Plot 1D (vs theta) and 2D contour of a weight array.
 
@@ -216,42 +216,31 @@ def plot_weight(Y, X, W, name="Weight", save_path=None, lam_plot=-1):
         Label or title for the weight.
     save_path : str or Path
         Optional — if provided, saves instead of showing inline.
-    lam_plot : float, optional
-        Specific lambda value to plot a 1D theta slice for.
-        If -1 (default), uses the central lambda index.
     """
 
-    # --- Determine lambda index to slice along ---
-    lam_values = X[0, :]  # 1D lambda array from grid
-    theta_vals = Y[:, 0]  # 1D theta array
-
-    if lam_plot < 0:
-        mid_idx = W.shape[1] // 2
-        lam_selected = lam_values[mid_idx]
-    else:
-        mid_idx = np.argmin(np.abs(lam_values - lam_plot))
-        lam_selected = lam_values[mid_idx]
-
+    # 1D slice through the central lambda index
+    #mid_idx = W.shape[1] // 2 if lam_plot < 0 else np.argmin(np.fabs(lam_plot - theta_vals ))
+    theta_vals = Y[:, 0]
+    mid_idx = W.shape[1] // 2 
+    if lam_plot > 0 :
+        mid_idx = np.argmin(np.fabs(lam_plot - X[0] ))
     weight_slice = W[:, mid_idx]
+    
 
-    # --- Create figure ---
     fig, axes = plt.subplots(1, 2, figsize=(10, 4))
 
-    # --- 1D theta slice plot ---
+    # --- 1D plot ---
     axes[0].plot(theta_vals, weight_slice, color="blue", lw=1.5)
-    axes[0].set_xlabel(r"$\theta_L$ [mrad]")
+    axes[0].set_xlabel(r"$\theta_L$ [rads]")
     axes[0].set_ylabel("Weight")
-    axes[0].set_title(f"λ = {lam_selected:.3f}")
 
-    # --- 2D heatmap of full weighting ---
+    # --- 2D contour plot ---
     c = axes[1].pcolormesh(X, Y, W, shading="auto", cmap="Blues")
     axes[1].set_xlabel(r"Fractional Lab Frame Energy ($\lambda$)")
-    axes[1].set_ylabel(r"Longitudinal Angle ($\theta_L$) [mrad]")
-    axes[1].set_title(name)
+    axes[1].set_ylabel(r"Longitudinal Angle ($\theta_L$) [rads]")
     fig.colorbar(c, ax=axes[1], label="Weighting (w)")
 
     plt.tight_layout()
-
     if save_path is not None:
         plt.savefig(save_path, dpi=200)
         plt.close()
@@ -303,8 +292,8 @@ def objective(weight_vector, grid_size=500, N_target=10000):
     return -FOM
 
 base_dirs = {
-    "Without": Path("data/Without EDM"),
-    "With": Path("data/With EDM"),
+    "Without": Path("data/Without_EDM"),
+    "With": Path("data/With_EDM"),
 }
 
 edm_state="With"
@@ -314,13 +303,26 @@ data_all = load_array_data(base_dirs)
 grids = data_all[edm_state][run_id]
 Y, X, Z = grids["Y"], grids["X"], grids["Z"]
 
-physical_mask = generate_mask(data_all)
-
 # CHANGE THESE PARAMETERS TO CHANGE THE PROGRAM
-num_workers = 2
-budget = 500
-lam_curr = 0.2
-checkpoint_file = f"Outputs/Checkpoints/cma_checkpoint_lam={lam_curr}_budget={budget}.pkl"
+import sys
+num_workers = 2 #int(sys.argv[1])
+budget = 10 #int(sys.argv[2])
+lam_curr = 0.6 #float(sys.argv[3])
+
+if lam_curr > 1.0 or lam_curr < 0.1:
+    print("clown, lambda: ", lam_curr)
+    sys.exit(0)    
+
+physical_mask = generate_mask(data_all,lam_curr=lam_curr)
+
+#area for all output files (can get large...)
+permanentdir = '/bundle/data/g-2/Project/' 
+partialname = permanentdir+f'cma_checkpoint_lam={lam_curr:.2f}'
+
+#temporary storage of current run
+checkpoint_dir = 'Outputs/Checkpoints/'
+checkpoint_file = f'cma_checkpoint_lam={lam_curr}_budget={budget}.pkl'
+totalbudget = budget
 
 # --- CMA-ES configuration ---
 grid_size = 500
@@ -332,8 +334,30 @@ iter_history = []  # store iteration numbers
 
 # --- Create or resume optimiser ---
 RESUME_EXISTING = True
-if os.path.exists(checkpoint_file) and RESUME_EXISTING:
-    print(f"Resuming optimiser from checkpoint: {checkpoint_file}")
+#if os.path.exists(checkpoint_file) and RESUME_EXISTING:
+#    print(f"Resuming optimiser from checkpoint: {checkpoint_file}")
+#    with open(checkpoint_file, "rb") as f:
+#        optimizer = pickle.load(f)
+import glob
+match = glob.glob(partialname+"*pkl")
+print(partialname, match)
+if match:
+
+    match0 = match[0]
+    oldbudget = int(match0.split("budget=")[1].split(".")[0])
+
+    print(f"Possible files to resume optimiser from: {match}")
+    #if multiple matches, pick one with largest budget
+    if len(match) > 1:
+        for m in match:
+            thisbudget = int(m.split("budget=")[1].split(".")[0])
+            if thisbudget > oldbudget:
+                match0 = m
+                oldbudget = thisbudget
+            
+    print(f"Resuming optimiser from checkpoint: {match0}")
+    totalbudget += oldbudget
+    checkpoint_file = permanentdir+f'cma_checkpoint_lam={lam_curr:.2f}_budget={oldbudget}.pkl'
     with open(checkpoint_file, "rb") as f:
         optimizer = pickle.load(f)
 else:
@@ -346,6 +370,7 @@ else:
 
 # --- Run optimisation loop with progress tracking ---
 for i in range(budget):
+    print(i)
     x = optimizer.ask()
     value = objective(x.value)
     optimizer.tell(x, value)
@@ -353,26 +378,13 @@ for i in range(budget):
     fom_history.append(-value)
     iter_history.append(i + 1)
 
-    # --- Save lightweight checkpoint (overwrite each time) ---
-    if (i + 1) % 20 == 0 or i == budget - 1:
-        best_vec = optimizer.provide_recommendation().value
-        best_fom = -objective(best_vec)
-
-        checkpoint_data = {
-            "iteration": i + 1,
-            "best_vector": best_vec,
-            "best_FOM": best_fom,
-            "fom_history": fom_history,
-            "iter_history": iter_history,
-        }
-
-        np.savez_compressed(
-            "Outputs/Checkpoints/light_checkpoint_latest.npz",  # single rolling file
-            **checkpoint_data
-        )
-
-        print(f"Checkpoint updated at iteration {i+1}/{budget} | FOM = {best_fom:.3f}")
-
+    # Save checkpoint and progress every few steps
+    if (i + 1) % 500 == 0 or i == budget - 1:
+        outfile = checkpoint_dir + f'cma_checkpoint_lam={lam_curr:.2f}_budget={totalbudget}.pkl'
+        with open(outfile, "wb") as f:
+            pickle.dump(optimizer, f)
+        np.savez("fom_progress.npz", iter=iter_history, fom=fom_history)
+        print(f"Iter {i+1}/{budget} | FOM = {fom_history[-1]:.3f}")
 
 # --- Final recommendation ---
 recommendation = optimizer.provide_recommendation()
@@ -391,4 +403,5 @@ best_full = expand_weight_grid(best_coarse)
 best_full = gaussian_filter(best_full, sigma=2)
 best_full = np.where(physical_mask, best_full, 0)
 
-plot_weight(Y, X, best_full, name="Weight", save_path=None, lam_plot = lam_curr)
+output = f"Outputs/Figures/out_{totalbudget}_{lam_curr:.3f}.png"
+plot_weight(Y, X, best_full, name="Weight", save_path=output, lam_plot = lam_curr)
