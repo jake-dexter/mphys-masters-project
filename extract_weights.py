@@ -1,6 +1,7 @@
 from scipy.interpolate import RegularGridInterpolator
 from scipy.ndimage import gaussian_filter
 from pathlib import Path
+import matplotlib.pyplot as plt
 import numpy as np
 import pickle
 import os
@@ -103,35 +104,55 @@ def generate_mask(data_all,gamma=29.30343,lam_curr = 0.6):
     physical_mask = np.where(lambda_mask, physical_mask, 0.0)
     return physical_mask
 
-folder = "outputs/Checkpoints"
+folder = "partial weights/"
 
 base_dirs = {
-    "Without": Path("data/Without_EDM"),
-    "With": Path("data/With_EDM"),
+    "Without": Path("data/Without EDM"),
+    "With": Path("data/With EDM"),
 }
 
 data_all = load_array_data(base_dirs)
 
+run_id = next(iter(data_all["With"]))
+X = data_all["With"][run_id]["X"]   # (500,500)
+Y = data_all["With"][run_id]["Y"]   # (500,500) in mrad
+
+lam_axis = X[0, :]                  # shape (500,) lambda value for each column
+theta_axis = Y[:, 0]                # shape (500,) theta value for each row (mrad)
+
+lam_targets = []
+w_slices = []   # each element shape (500,)
+
 for filename in os.listdir(folder):
-    filepath = os.path.join(folder, filename)
-    if os.path.isfile(filepath):
-        print(f"Processing file: {filename}")
-        budget = filename.split("budget=")[1].split(".")[0]
-        lam = filename.split("lam=")[1].split("_")[0]
-        optimizer = pickle.load(filename)
+    if not filename.endswith(".npz"):
+        continue
 
-        physical_mask = generate_mask(data_all,lam_curr=lam)
-        
-        recommendation = optimizer.provide_recommendation()
-        best_vector = recommendation.value
+    npz = np.load(os.path.join(folder, filename), allow_pickle=True)
+    lam_k = float(npz["lam"])
+    W_k = npz["weight"]             # should be (500,500) or something you can map to it
 
-        best_half = best_vector.reshape((250, 500))
-        best_half = np.clip(best_half, 0, None)
+    # find which column in the full grid corresponds to this lambda
+    j = int(np.argmin(np.abs(lam_axis - lam_k)))
 
-        best_coarse = np.vstack([np.flipud(best_half), best_half])
+    # take the theta-profile at that lambda
+    w_k = W_k[:, j]
 
-        best_full = expand_weight_grid(best_coarse)
-        best_full = gaussian_filter(best_full, sigma=2)
-        best_full = np.where(physical_mask, best_full, 0)
+    lam_targets.append(lam_k)
+    w_slices.append(w_k)
 
-        print(best_full)
+lam_targets = np.array(lam_targets)
+w_slices = np.stack(w_slices, axis=0)   # shape (n_lam=13, 500)
+
+order = np.argsort(lam_targets)
+lam_targets = lam_targets[order]        # (13,)
+w_slices = w_slices[order, :]           # (13, 500)
+
+W_full = np.empty((len(theta_axis), len(lam_axis)), dtype=float)  # (500,500)
+
+for i in range(len(theta_axis)):
+    # w_slices[:, i] are the values at fixed theta_i across the 13 lambdas
+    W_full[i, :] = np.interp(lam_axis, lam_targets, w_slices[:, i])
+
+np.savez_compressed("full_weight_map_interpolated.npz",
+                    weight=W_full, lam_axis=lam_axis, theta_axis=theta_axis)
+
