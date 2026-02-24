@@ -43,7 +43,7 @@ theta_axis = Y[:, 0]    # (500,)
 # 2) LOAD ALL PARTIAL WEIGHT FILES
 # ------------------------------------------------------------
 
-folder = "partial weights2/"
+folder = "Weight_Maps2/"
 
 lam_targets = []
 w_slices = []
@@ -101,7 +101,7 @@ for i in range(len(theta_axis)):
 # ------------------------------------------------------------
 
 np.savez_compressed(
-    "random.npz",
+    "total_interpolated_weights.npz",
     weight=W_full,
     lam_axis=lam_axis,
     theta_axis=theta_axis,
