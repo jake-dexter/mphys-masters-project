@@ -63,9 +63,8 @@ for filename in os.listdir(folder):
     W_k = npz["weight"]  # expected (500,500)
 
     # extract the active lambda column
-    col_strength = np.sum(np.abs(W_k), axis=0)
-    j = int(np.argmax(col_strength))
-    w_k = W_k[:, j]      # (500,)
+    j = int(np.argmin(np.abs(lam_axis - lam_k)))
+    w_k = W_k[:, j]
 
     lam_targets.append(lam_k)
     w_slices.append(w_k)
@@ -101,7 +100,7 @@ for i in range(len(theta_axis)):
 # ------------------------------------------------------------
 
 np.savez_compressed(
-    "total_interpolated_weights.npz",
+    "numerical_weights_2.npz",
     weight=W_full,
     lam_axis=lam_axis,
     theta_axis=theta_axis,
