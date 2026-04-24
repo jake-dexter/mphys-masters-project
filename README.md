@@ -110,7 +110,7 @@ The final analysis found that:
 
 The full dissertation is included in this repository:
 
-[Dissertation.pdf](./Masters Project.pdf)
+[Dissertation.pdf](./Masters_Project.pdf)
 
 ## Notes
 
